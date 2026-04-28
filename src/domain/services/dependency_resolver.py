@@ -1,17 +1,17 @@
 from collections import defaultdict, deque
 
-# from src.domain.models.entities import str
+from src.domain.models.entities import EtlData
 
 
 def resolve_etl_dependencies(
-    dependencies: dict[str, list[str]],
-) -> list[str]:
+    dependencies: dict[EtlData, list[EtlData]],
+) -> list[EtlData]:
     """Devuelve una lista ordenada de ETLs según sus dependencias.
 
     Args:
         dependencies: Diccionario donde la clave es un str y el valor es una lista de str de los que depende."""
-    incoming_count: dict[str, int] = defaultdict(int)
-    graph: dict[str, list[str]] = defaultdict(list)
+    incoming_count: dict[EtlData, int] = defaultdict(int)
+    graph: dict[EtlData, list[EtlData]] = defaultdict(list)
 
     for node, deps in dependencies.items():
         incoming_count.setdefault(node, 0)
@@ -21,7 +21,7 @@ def resolve_etl_dependencies(
             incoming_count.setdefault(dep, 0)
 
     queue = deque(node for node, count in incoming_count.items() if count == 0)
-    ordered: list[str] = []
+    ordered: list[EtlData] = []
 
     while queue:
         node = queue.popleft()
