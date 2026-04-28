@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.zed/
+*.egg-info/
+dist/
+build/
+data/pipelines.json
+.nicegui/
+etl-rustico/
+*.env
