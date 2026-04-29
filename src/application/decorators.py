@@ -13,6 +13,7 @@ def logged_execution(logger: ILoggerPort) -> Callable[[Callable[P, R]], Callable
     """Envuelve una función con logging de inicio, fin y error.
 
     Solo depende de ILoggerPort — ninguna infraestructura concreta.
+    En caso de error, registra el tipo de excepción y el mensaje.
     """
 
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
@@ -24,7 +25,8 @@ def logged_execution(logger: ILoggerPort) -> Callable[[Callable[P, R]], Callable
                 logger.info(f"[{func.__qualname__}] finalizado")
                 return result
             except Exception as e:
-                logger.error(f"[{func.__qualname__}] error: {e}")
+                exc_type = type(e).__name__
+                logger.error(f"[{func.__qualname__}] {exc_type}: {e}")
                 raise
 
         return wrapper

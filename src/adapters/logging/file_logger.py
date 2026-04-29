@@ -27,3 +27,6 @@ class FileLogger(ILoggerPort):
 
     def error(self, message: str, **kwargs) -> None:
         self.logger.error(message, extra=kwargs)
+
+    def critical(self, message: str, **kwargs) -> None:
+        self.logger.critical(message, extra=kwargs)

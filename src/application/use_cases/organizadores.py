@@ -5,9 +5,12 @@ from src.domain.models.enums import DestinationType, SourceType
 class OrganizadoresUseCase(BaseETLUseCase):
     name = "organizadores"
     description = "ETL de dimensión organizadores desde MySQL hacia ClickHouse"
-    doc = "Carga la dimensión de organizadores de SEHINT01 a ClickHouse con SCD Type 2"
+    doc = (
+        "Carga la dimensión de organizadores de SEHINT01 a ClickHouse con SCD Type 2. "
+        "Puede levantarse desde MySQL (fuente principal) o desde Excel como respaldo manual."
+    )
     depends_on = ()
-    sources = [SourceType.MYSQL]
+    sources = [SourceType.MYSQL, SourceType.EXCEL]
     destinations = [DestinationType.CLICKHOUSE]
 
     def execute(self, **kwargs):

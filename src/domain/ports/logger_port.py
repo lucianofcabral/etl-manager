@@ -25,3 +25,6 @@ class ILoggerPort(ABC):
 
     @abstractmethod
     def error(self, message: str, **kwargs) -> None: ...
+
+    @abstractmethod
+    def critical(self, message: str, **kwargs) -> None: ...

@@ -8,6 +8,7 @@ import jinja2
 import polars as pl
 from dotenv import load_dotenv
 
+from src.domain.exceptions import ETLConfigurationError, ETLSourceError
 from src.domain.ports.endpoints_port import ISourcePortDB
 
 
@@ -105,12 +106,18 @@ class DbSource(ISourcePortDB):
         self, query: str, parameters: dict[str, Any] | None = None
     ) -> pl.LazyFrame:
         """Lee datos de la base de datos con el query dado y devuelve un LazyFrame."""
-        return pl.read_database_uri(
-            query=query,
-            uri=self.__build_uri(),
-            execute_options={"parameters": parameters or {}},
-            engine="connectorx",
-        ).lazy()
+        try:
+            return pl.read_database_uri(
+                query=query,
+                uri=self.__build_uri(),
+                execute_options={"parameters": parameters or {}},
+                engine="connectorx",
+            ).lazy()
+        except Exception as e:
+            raise ETLSourceError(
+                f"Error leyendo desde '{self.name}' (database={self.database}): {e}",
+                cause=e,
+            ) from e
 
     def test_connection(self) -> bool:
         """Prueba la conexión a la base de datos."""
@@ -120,8 +127,10 @@ class DbSource(ISourcePortDB):
             )
             return True
         except Exception as e:
-            print(f"Error de conexión: {e}")
-            return False
+            raise ETLConfigurationError(
+                f"No se pudo conectar a '{self.name}' (host={self.host}, database={self.database}): {e}",
+                cause=e,
+            ) from e
 
 
 class DbSourceFactory:

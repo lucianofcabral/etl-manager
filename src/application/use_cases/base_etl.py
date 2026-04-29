@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from typing import Any, ClassVar
 
 from src.application.decorators import logged_execution
+from src.domain.exceptions import ETLConfigurationError
 from src.domain.models.entities import EtlData, EtlProcess
 from src.domain.models.enums import DestinationType, SourceType
 from src.domain.ports.endpoints_port import IDestinationPort
@@ -19,6 +20,11 @@ class BaseETLUseCase(ABC):
 
     `execute` y `post_execute` se envuelven automáticamente con logging al construir
     la instancia — las subclases no necesitan saber nada del logger.
+
+    Atributos de clase para fuentes:
+        sources: Todos los SourceType que este proceso podría soportar (intención).
+        implemented_sources: Subconjunto de `sources` con implementación real lista
+            para correr. La UI usa este atributo para habilitar/deshabilitar opciones.
     """
 
     name: ClassVar[str]
@@ -26,7 +32,17 @@ class BaseETLUseCase(ABC):
     doc: ClassVar[str]
     depends_on: ClassVar[tuple[type["BaseETLUseCase"], ...]] = ()
     sources: ClassVar[list[SourceType]] = []
+    implemented_sources: ClassVar[list[SourceType]] = []
     destinations: ClassVar[list[DestinationType]] = []
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        invalid = set(cls.implemented_sources) - set(cls.sources)
+        if invalid:
+            raise ETLConfigurationError(
+                f"{cls.__name__}: implemented_sources contiene fuentes no declaradas "
+                f"en sources: {invalid}. Agregálas a 'sources' primero."
+            )
 
     def __init__(
         self,
@@ -49,6 +65,22 @@ class BaseETLUseCase(ABC):
             doc=cls.doc,
             depends_on=[dep.as_etl_data() for dep in cls.depends_on],
         )
+
+    @classmethod
+    def available_sources(cls) -> list[SourceType]:
+        """Fuentes con implementación real lista para correr."""
+        return list(cls.implemented_sources)
+
+    @classmethod
+    def unimplemented_sources(cls) -> list[SourceType]:
+        """Fuentes declaradas en sources pero aún sin implementación."""
+        impl = set(cls.implemented_sources)
+        return [s for s in cls.sources if s not in impl]
+
+    @classmethod
+    def is_source_available(cls, source: SourceType) -> bool:
+        """True si la fuente dada está implementada y lista para correr."""
+        return source in cls.implemented_sources
 
     def queries_iterator(self, queries: list[IQueryPort] | IQueryPort) -> Iterator[Any]:
         """Itera sobre los resultados de las queries dadas."""

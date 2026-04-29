@@ -3,6 +3,7 @@ from typing import Any
 import polars as pl
 from clickhouse_connect import get_client
 
+from src.domain.exceptions import ETLDestinationError
 from src.domain.ports.endpoints_port import IDestinationPort
 
 
@@ -35,20 +36,33 @@ class ClickHouseDestination(IDestinationPort):
         )
 
     def write_lazy(self, data: pl.LazyFrame, **kwargs) -> None:
-        frame = data.collect()
-        kwargs.setdefault("table", self.table)
-        with self.get_client() as client:
-            client.insert_arrow(arrow_table=frame.to_arrow(), **kwargs)
+        try:
+            frame = data.collect()
+            kwargs.setdefault("table", self.table)
+            with self.get_client() as client:
+                client.insert_arrow(arrow_table=frame.to_arrow(), **kwargs)
+        except Exception as e:
+            raise ETLDestinationError(
+                f"Error escribiendo en ClickHouse (database={self.database}, table={self.table}): {e}",
+                cause=e,
+            ) from e
 
     def read_lazy(self, query: str, **kwargs) -> pl.DataFrame:
-        with self.get_client() as client:
-            result = client.query_arrow(query, **kwargs)
+        try:
+            with self.get_client() as client:
+                result = client.query_arrow(query, **kwargs)
+        except Exception as e:
+            raise ETLDestinationError(
+                f"Error leyendo desde ClickHouse (database={self.database}): {e}",
+                cause=e,
+            ) from e
+
         data = pl.from_arrow(result)
         if isinstance(data, pl.DataFrame):
             return data
         elif isinstance(data, pl.Series):
             return data.to_frame()
 
-        raise ValueError(
-            f"Unexpected data type returned from ClickHouse query{type(data)}"
+        raise ETLDestinationError(
+            f"Tipo de dato inesperado retornado por ClickHouse: {type(data)}"
         )
