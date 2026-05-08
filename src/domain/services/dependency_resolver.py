@@ -1,6 +1,6 @@
 from collections import defaultdict, deque
 
-from src.domain.models.entities import EtlData
+from src.domain.models.entities import EtlData, EtlProcess, PipelineStatus
 
 
 def resolve_etl_dependencies(
@@ -35,3 +35,14 @@ def resolve_etl_dependencies(
         raise ValueError("Circular dependency detected")
 
     return ordered
+
+
+def dependencies_satisfied(process: EtlProcess) -> bool:
+    """True si todos los procesos requeridos por `process` están en SUCCESS.
+
+    Args:
+        process: El proceso que quiere arrancar.
+    """
+    if not process.dep_processes:
+        return True
+    return all(p.status == PipelineStatus.SUCCESS for p in process.dep_processes)

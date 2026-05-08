@@ -2,12 +2,27 @@
 
 import pytest
 
-from src.domain.models.entities import EtlData
-from src.domain.services.dependency_resolver import resolve_etl_dependencies
+from src.domain.models.entities import EtlData, EtlProcess, PipelineStatus
+from src.domain.services.dependency_resolver import (
+    dependencies_satisfied,
+    resolve_etl_dependencies,
+)
 
 
 def etl(name: str) -> EtlData:
     return EtlData(unique_name=name, process_name=name, doc=name)
+
+
+def process(etl_data: EtlData, status: PipelineStatus = PipelineStatus.IDLE) -> EtlProcess:
+    p = EtlProcess(etl_data=etl_data)
+    if status == PipelineStatus.RUNNING:
+        p.change_status(True)
+    elif status == PipelineStatus.SUCCESS:
+        p.change_status(True)
+        p.change_status(True)
+    elif status == PipelineStatus.FAILED:
+        p.change_status(False)
+    return p
 
 
 class TestResolveDependencies:
@@ -62,3 +77,56 @@ class TestResolveDependencies:
         result = resolve_etl_dependencies({a: [], b: [], c: [a, b]})
         assert result.index(a) < result.index(c)
         assert result.index(b) < result.index(c)
+
+
+# ---------------------------------------------------------------------------
+# dependencies_satisfied
+# ---------------------------------------------------------------------------
+
+
+class TestDependenciesSatisfied:
+    def test_no_deps_always_satisfied(self):
+        p = EtlProcess(etl_data=etl("a"))
+        assert dependencies_satisfied(p) is True
+
+    def test_dep_in_success_is_satisfied(self):
+        dep_proc = process(etl("dep"), status=PipelineStatus.SUCCESS)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[dep_proc])
+        assert dependencies_satisfied(p) is True
+
+    def test_dep_still_running_not_satisfied(self):
+        dep_proc = process(etl("dep"), status=PipelineStatus.RUNNING)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[dep_proc])
+        assert dependencies_satisfied(p) is False
+
+    def test_dep_failed_not_satisfied(self):
+        dep_proc = process(etl("dep"), status=PipelineStatus.FAILED)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[dep_proc])
+        assert dependencies_satisfied(p) is False
+
+    def test_dep_idle_not_satisfied(self):
+        dep_proc = process(etl("dep"), status=PipelineStatus.IDLE)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[dep_proc])
+        assert dependencies_satisfied(p) is False
+
+    def test_dep_absent_means_empty_dep_processes(self):
+        p = EtlProcess(etl_data=etl("main"))
+        assert dependencies_satisfied(p) is True
+
+    def test_all_deps_must_succeed(self):
+        pa = process(etl("a"), status=PipelineStatus.SUCCESS)
+        pb = process(etl("b"), status=PipelineStatus.IDLE)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[pa, pb])
+        assert dependencies_satisfied(p) is False
+
+    def test_all_deps_success_satisfied(self):
+        pa = process(etl("a"), status=PipelineStatus.SUCCESS)
+        pb = process(etl("b"), status=PipelineStatus.SUCCESS)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[pa, pb])
+        assert dependencies_satisfied(p) is True
+
+    def test_extra_dep_processes_ignored_when_all_success(self):
+        pa = process(etl("dep"), status=PipelineStatus.SUCCESS)
+        pb = process(etl("extra"), status=PipelineStatus.SUCCESS)
+        p = EtlProcess(etl_data=etl("main"), dep_processes=[pa, pb])
+        assert dependencies_satisfied(p) is True

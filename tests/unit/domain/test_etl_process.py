@@ -10,12 +10,11 @@ from src.domain.models.entities import EtlData, EtlProcess, PipelineStatus
 # ---------------------------------------------------------------------------
 
 
-def make_etl_data(name: str = "etl_a", depends_on: list | None = None) -> EtlData:
+def make_etl_data(name: str = "etl_a") -> EtlData:
     return EtlData(
         unique_name=name,
         process_name=f"Proceso {name}",
         doc=f"Documentación de {name}",
-        depends_on=depends_on or [],
     )
 
 
@@ -23,7 +22,16 @@ class TestEtlData:
     def test_creation_ok(self):
         d = make_etl_data("foo")
         assert d.unique_name == "foo"
-        assert d.depends_on == []
+        assert EtlData.depends_on == []
+
+    def test_depends_on_is_class_level(self):
+        class DepData(EtlData):
+            depends_on = [EtlData]
+
+            def __init__(self):
+                super().__init__(unique_name="dep", process_name="Dep", doc="doc")
+
+        assert DepData.depends_on == [EtlData]
 
     def test_strips_whitespace_on_unique_name(self):
         d = make_etl_data("  foo  ")
@@ -54,11 +62,6 @@ class TestEtlData:
         a = make_etl_data("foo")
         d = {a: "val"}
         assert d[a] == "val"
-
-    def test_depends_on_accepts_etl_data_instances(self):
-        dep = make_etl_data("dep")
-        parent = make_etl_data("parent", depends_on=[dep])
-        assert parent.depends_on[0].unique_name == "dep"
 
 
 # ---------------------------------------------------------------------------

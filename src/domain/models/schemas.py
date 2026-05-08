@@ -1,6 +1,8 @@
+from typing import Any
+
 from polars import Date, Float32, Float64, Int32, String, UInt16, UInt32
 
-dimdaf_schema = {
+dimdaf_schema: dict[str, Any] = {
     "nro_persona": UInt32,
     "persona_key": UInt32,
     "cuit": String,
@@ -15,7 +17,7 @@ dimdaf_schema = {
 }
 
 
-primas_ramas_varias_schema = {
+primas_ramas_varias_schema: dict[str, Any] = {
     "femision": Date,
     "fvigdesde": Date,
     "fvighasta": Date,
@@ -42,7 +44,7 @@ primas_ramas_varias_schema = {
 }
 
 
-primas_automotores_schema = {
+primas_automotores_schema: dict[str, Any] = {
     "femision": Date,
     "fvigdesde": Date,
     "fvighasta": Date,
@@ -75,7 +77,7 @@ primas_automotores_schema = {
 }
 
 
-dim_coberturas_ramas_varias_schema = {
+dim_coberturas_ramas_varias_schema: dict[str, Any] = {
     "cod_rama": UInt32,
     "cod_cobertura": UInt32,
     "cobertura": String,
@@ -86,7 +88,7 @@ dim_coberturas_ramas_varias_schema = {
 }
 
 
-dim_localidades_schema = {
+dim_localidades_schema: dict[str, Any] = {
     "cp": UInt32,
     "cp_sufijo": UInt32,
     "localidad": String,
@@ -96,7 +98,7 @@ dim_localidades_schema = {
 }
 
 
-dim_rcs_aut_schema = {
+dim_rcs_aut_schema: dict[str, Any] = {
     "num_tarifa": UInt32,
     "cap": UInt32,
     "var": UInt32,
@@ -109,7 +111,7 @@ dim_rcs_aut_schema = {
 }
 
 
-dinm_tasas_aut_schema = {
+dinm_tasas_aut_schema: dict[str, Any] = {
     "num_tarifa": UInt32,
     "cap": UInt32,
     "air": UInt32,
@@ -122,7 +124,7 @@ dinm_tasas_aut_schema = {
 }
 
 
-sehpn151_schema = {
+sehpn151_schema: dict[str, Any] = {
     "op": UInt32,
     "suplemento": UInt32,
     "cod_tipo_op": UInt32,
@@ -165,7 +167,7 @@ sehpn151_schema = {
 }
 
 
-sinpag_schema = {
+sinpag_schema: dict[str, Any] = {
     "cod_rama": UInt32,
     "nro_siniestro": UInt32,
     "nro_liquidacion": UInt32,
@@ -221,7 +223,7 @@ sinpag_schema = {
 }
 
 
-vigentes_vehiculos_dia = {
+vigentes_vehiculos_dia: dict[str, Any] = {
     "cod_organizador": UInt32,
     "cod_productor": UInt32,
     "cod_rama": UInt32,
@@ -265,4 +267,38 @@ vigentes_vehiculos_dia = {
     "dominio": String,
     "ant_vehiculo": Int32,
     "fecha": Date,
+}
+
+
+organizadores_schema: dict[str, Any] = {
+    "cod_organizador": UInt32,
+    "nro_persona": UInt32,
+    "nombre": String,
+    "domicilio": String,
+    "cp": UInt32,
+    "cp_sufijo": UInt32,
+    "localidad": String,
+    "cod_provincia": String,
+    "tipo_doc": String,
+    "nro_doc": UInt32,
+    "cuit": String,
+    "provincia": String,
+    "cod_inder_provincia": String,
+    "matricula": UInt32,
+    "cod_grupo": UInt32,
+    "grupo": String,
+}
+
+
+dim_coberturas_aut_schema: dict[str, Any] = {
+    "cod_cobertura": String,
+    "or_cobertura": UInt32,
+    "cat_cobertura": String,
+    "or_cat_cobertura": UInt32,
+    "rt": UInt16,
+    "rp": UInt16,
+    "it": UInt16,
+    "ip": UInt16,
+    "at": UInt16,
+    "ap": UInt16,
 }

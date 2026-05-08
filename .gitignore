@@ -9,3 +9,6 @@ data/pipelines.json
 .nicegui/
 etl-rustico/
 *.env
+.github/
+.pytest_cache/
+.ruff_cache/
