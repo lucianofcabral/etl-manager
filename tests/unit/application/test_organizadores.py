@@ -36,22 +36,22 @@ def make_use_case() -> OrganizadoresUseCase:
 def sample_org_df(n: int = 3) -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "cod_organizador": list(range(1, n + 1)),
-            "nro_persona": list(range(100, 100 + n)),
-            "nombre": [f"JUAN PEREZ {i}" for i in range(n)],
-            "domicilio": [f"Calle {i}" for i in range(n)],
-            "cp": [5000] * n,
-            "cp_sufijo": [0] * n,
-            "localidad": ["CORDOBA"] * n,
-            "cod_provincia": ["CB"] * n,
-            "tipo_doc": ["DNI"] * n,
-            "nro_doc": list(range(30_000_000, 30_000_000 + n)),
-            "cuit": [f"20-3000000{i}-9" for i in range(n)],
-            "provincia": ["CORDOBA"] * n,
-            "cod_inder_provincia": ["14"] * n,
-            "matricula": list(range(1000, 1000 + n)),
-            "cod_grupo": [1] * n,
-            "grupo": [f"GRUPO {i}" for i in range(n)],
+            "cod_organizador": pl.Series(list(range(1, n + 1)), dtype=pl.UInt32),
+            "nro_persona": pl.Series(list(range(100, 100 + n)), dtype=pl.UInt32),
+            "nombre": pl.Series([f"JUAN PEREZ {i}" for i in range(n)], dtype=pl.String),
+            "domicilio": pl.Series([f"Calle {i}" for i in range(n)], dtype=pl.String),
+            "cp": pl.Series([5000] * n, dtype=pl.UInt32),
+            "cp_sufijo": pl.Series([0] * n, dtype=pl.UInt32),
+            "localidad": pl.Series(["CORDOBA"] * n, dtype=pl.String),
+            "cod_provincia": pl.Series(["CB"] * n, dtype=pl.String),
+            "tipo_doc": pl.Series(["DNI"] * n, dtype=pl.String),
+            "nro_doc": pl.Series(list(range(30_000_000, 30_000_000 + n)), dtype=pl.UInt32),
+            "cuit": pl.Series([f"20-3000000{i}-9" for i in range(n)], dtype=pl.String),
+            "provincia": pl.Series(["CORDOBA"] * n, dtype=pl.String),
+            "cod_inder_provincia": pl.Series(["14"] * n, dtype=pl.String),
+            "matricula": pl.Series(list(range(1000, 1000 + n)), dtype=pl.UInt32),
+            "cod_grupo": pl.Series([1] * n, dtype=pl.UInt32),
+            "grupo": pl.Series([f"GRUPO {i}" for i in range(n)], dtype=pl.String),
         }
     )
 

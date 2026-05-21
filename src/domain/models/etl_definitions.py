@@ -7,6 +7,7 @@ que produzca esos datos debe conformar el schema declarado aquí.
 
 from src.domain.models.entities import EtlData
 from src.domain.models.schemas import (
+    coberturas_rv_etl_schema,
     dim_coberturas_aut_schema,
     dim_coberturas_ramas_varias_schema,
     dimdaf_schema,
@@ -19,7 +20,7 @@ class CoberturasRVarias_EtlData(EtlData):
     """Dimensión de coberturas de ramas varias."""
 
     _domain_name = "coberturas_ramas_varias"
-    schema = dim_coberturas_ramas_varias_schema
+    schema = coberturas_rv_etl_schema
 
     def __init__(self) -> None:
         super().__init__(
@@ -67,7 +68,7 @@ class Organizadores_EtlData(EtlData):
         super().__init__(
             unique_name=self._domain_name,
             process_name="Organizadores",
-            doc="Carga la dimensión de organizadores desde SEHINT01.",
+            doc="Carga la dimensión de organizadores",
         )
 
 
@@ -82,7 +83,6 @@ class PrimasAut_EtlData(EtlData):
             unique_name=self._domain_name,
             process_name="Primas Automotores",
             doc=(
-                "Ingesta de primas emitidas de automotores a nivel de "
-                "suplemento/componente desde MySQL hacia ClickHouse."
+                "Ingesta de primas emitidas de automotores a nivel de suplemento/componente."
             ),
         )

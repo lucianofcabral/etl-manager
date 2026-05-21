@@ -233,9 +233,9 @@ class TestRealUseCasesConsistency:
         declared = set(PrimasAutomotoresUseCase.sources)
         assert impl <= declared
 
-    def test_primas_declares_multiple_sources(self):
+    def test_primas_has_mysql_source(self):
         from src.application.use_cases.primas_automotores import (
             PrimasAutomotoresUseCase,
         )
 
-        assert len(PrimasAutomotoresUseCase.sources) > 1
+        assert SourceType.MYSQL in PrimasAutomotoresUseCase.sources

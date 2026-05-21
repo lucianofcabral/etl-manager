@@ -88,6 +88,17 @@ dim_coberturas_ramas_varias_schema: dict[str, Any] = {
 }
 
 
+# Schema del contrato intermedio ETL para coberturas de ramas varias
+# (subset de dim_coberturas_ramas_varias_schema: columnas que produce la query actual)
+coberturas_rv_etl_schema: dict[str, Any] = {
+    "cod_rama": UInt32,
+    "cod_cobertura": UInt32,
+    "cobertura": String,
+    "pormilaje": Float32,
+    "informe": String,
+}
+
+
 dim_localidades_schema: dict[str, Any] = {
     "cp": UInt32,
     "cp_sufijo": UInt32,

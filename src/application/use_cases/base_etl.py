@@ -5,6 +5,9 @@ from typing import Any, ClassVar
 import polars as pl
 
 from src.application.decorators import logged_execution
+from src.application.use_cases._schema_validation import validate_minimum_schema
+from src.application.use_cases.base_dest_etl import ETLDestinationUseCase
+from src.application.use_cases.base_source_etl import SourceETLUseCase
 from src.domain.exceptions import ETLConfigurationError
 from src.domain.models.entities import EtlData, EtlProcess
 from src.domain.models.enums import DestinationType, SourceType
@@ -64,8 +67,11 @@ class BaseETLUseCase(ABC):
 
     @classmethod
     def all_registered(cls) -> list[type["BaseETLUseCase"]]:
-        """Todas las subclases concretas registradas (sin clases abstractas)."""
-        return [uc for uc in _use_case_registry if not uc.__abstractmethods__]
+        """Todas las subclases concretas registradas (sin clases abstractas ni la base composite)."""
+        return [
+            uc for uc in _use_case_registry
+            if not uc.__abstractmethods__ and not uc.__dict__.get("_composite_base", False)
+        ]
 
     @classmethod
     def find(
@@ -175,3 +181,72 @@ class BaseETLUseCase(ABC):
     def post_execute(self, result: Any, **kwargs: Any) -> None:
         """Acciones post-ejecución (logging, limpieza, notificaciones)."""
         ...
+
+
+class CompositeETLUseCase(BaseETLUseCase):
+    """Use case compuesto: une SourceETLUseCase + ETLDestinationUseCase.
+
+    Valida el contrato intermedio (``EtlData.schema`` mínimo) entre la salida del source
+    y la entrada al destino. Es la entidad registrada en el registry y visible en la UI.
+
+    Las piezas (``SourceETLUseCase``, ``ETLDestinationUseCase``) son implementaciones internas;
+    no se registran por sí solas.
+
+    El flujo default de ``execute``:
+        1. ``source_etl_class.produce_frame(source_port)`` → LazyFrame
+        2. ``_validate_etl_contract(frame)`` usando ``EtlData.schema``
+        3. ``dest_etl_class.execute(frame)``
+
+    Subclases pueden sobreescribir ``execute`` para flujos más complejos (loops, fan-in, etc.)
+    manteniendo las llamadas a ``self._source_etl``, ``self._dest_etl`` y
+    ``self._validate_etl_contract``.
+    """
+
+    _composite_base: ClassVar[bool] = True
+
+    source_etl_class: ClassVar[type["SourceETLUseCase"]]
+    dest_etl_class: ClassVar[type["ETLDestinationUseCase"]]
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        if not cls.__dict__.get("_composite_base", False):
+            if "source_etl_class" in cls.__dict__:
+                st = cls.source_etl_class.source_type
+                cls.sources = [st]
+                cls.implemented_sources = [st]
+            if "dest_etl_class" in cls.__dict__:
+                dt = cls.dest_etl_class.destination_type
+                cls.destinations = [dt]
+        super().__init_subclass__(**kwargs)
+
+    def __init__(
+        self,
+        destination_port: IDestinationPort,
+        logger_port: ILoggerPort,
+    ) -> None:
+        super().__init__(destination_port, logger_port)
+        self._source_etl = self.__class__.source_etl_class()
+        self._dest_etl = self.__class__.dest_etl_class(destination_port)
+
+    def _validate_etl_contract(self, frame: pl.LazyFrame) -> None:
+        """Valida el contrato intermedio del ETL (EtlData.schema mínimo)."""
+        schema = self.__class__.etl_data_class.schema
+        if schema is not None:
+            validate_minimum_schema(
+                frame,
+                schema,
+                f"ETL contract [{self.__class__.__name__}]",
+            )
+
+    def produce_frame(self, source_port: ISourcePort, **kwargs: Any) -> pl.LazyFrame:
+        """Delega a source_etl.produce_frame para exponer el hook de composición."""
+        return self._source_etl.produce_frame(source_port, **kwargs)
+
+    def execute(self, source_port: ISourcePort, **kwargs: Any) -> Any:
+        """Flujo default: produce_frame → validar ETL contract → dest.execute."""
+        frame = self._source_etl.produce_frame(source_port, **kwargs)
+        self._validate_etl_contract(frame)
+        return self._dest_etl.execute(frame, **kwargs)
+
+    def post_execute(self, result: Any, **kwargs: Any) -> None:
+        """Post-ejecución. No-op por defecto; subclases pueden sobreescribir."""
+        pass

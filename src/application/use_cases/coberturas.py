@@ -1,6 +1,8 @@
 import polars as pl
 
-from src.application.use_cases.base_etl import BaseETLUseCase
+from src.application.use_cases.base_dest_etl import ETLDestinationUseCase
+from src.application.use_cases.base_etl import CompositeETLUseCase
+from src.application.use_cases.base_source_etl import SourceETLUseCase
 from src.domain.models.enums import DestinationType, SourceType
 from src.domain.models.etl_definitions import CoberturasAut_EtlData
 from src.domain.ports.endpoints_port import ISourcePort
@@ -21,21 +23,33 @@ _QUERY_COBERTURAS_AUT = """
 """
 
 
-class CoberturasAutomotoresMySqlToClickhouseUseCase(BaseETLUseCase):
-    etl_data_class = CoberturasAut_EtlData
-    depends_on = ()
-    sources = [SourceType.MYSQL]
-    implemented_sources = [SourceType.MYSQL]
-    destinations = [DestinationType.CLICKHOUSE]
+class CoberturasAut_MySQLSource(SourceETLUseCase):
+    """Extrae coberturas de automotores desde MySQL."""
 
-    def produce_frame(self, source_port: ISourcePort, **kwargs) -> pl.LazyFrame:
+    source_type = SourceType.MYSQL
+    input_schema = None  # se confía en el contrato SQL
+
+    def extract(self, source_port: ISourcePort, **kwargs) -> pl.LazyFrame:
         return source_port.read_lazy(_QUERY_COBERTURAS_AUT)
 
-    def execute(self, source_port: ISourcePort, **kwargs):
-        data = self.produce_frame(source_port, **kwargs)
-        row_count = data.select("cod_cobertura").collect().height
-        self.destination_port.write_lazy(data)
-        return {"rows": row_count, "table": self.process.etl_data.unique_name}
+
+class CoberturasAut_ClickhouseDest(ETLDestinationUseCase):
+    """Carga coberturas de automotores en ClickHouse."""
+
+    destination_type = DestinationType.CLICKHOUSE
+    dest_input_schema = None  # el contrato intermedio ya lo garantiza
+
+    def write(self, frame: pl.LazyFrame, **kwargs) -> dict:
+        row_count = frame.select("cod_cobertura").collect().height
+        self.destination_port.write_lazy(frame)
+        return {"rows": row_count, "table": "coberturas_automotores"}
+
+
+class CoberturasAutomotoresMySqlToClickhouseUseCase(CompositeETLUseCase):
+    etl_data_class = CoberturasAut_EtlData
+    source_etl_class = CoberturasAut_MySQLSource
+    dest_etl_class = CoberturasAut_ClickhouseDest
+    depends_on = ()
 
     def post_execute(self, result, **kwargs) -> None:
         if result:

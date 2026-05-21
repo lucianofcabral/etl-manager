@@ -3,10 +3,10 @@ from datetime import date, timedelta
 
 import polars as pl
 
-from src.application.use_cases.base_etl import BaseETLUseCase
-from src.application.use_cases.coberturas import (
-    CoberturasAutomotoresMySqlToClickhouseUseCase,
-)
+from src.application.use_cases.base_dest_etl import ETLDestinationUseCase
+from src.application.use_cases.base_etl import CompositeETLUseCase
+from src.application.use_cases.base_source_etl import SourceETLUseCase
+from src.application.use_cases.coberturas import CoberturasAutomotoresMySqlToClickhouseUseCase
 from src.application.use_cases.organizadores import OrganizadoresUseCase
 from src.domain.models.enums import DestinationType, SourceType
 from src.domain.models.etl_definitions import PrimasAut_EtlData
@@ -48,12 +48,31 @@ _QUERY_PRIMAS_AUT = """
 """
 
 
-class PrimasAutomotoresUseCase(BaseETLUseCase):
+class PrimasAut_MySQLSource(SourceETLUseCase):
+    """Extrae primas de automotores desde MySQL para un mes/año específico."""
+
+    source_type = SourceType.MYSQL
+    input_schema = None
+
+    def extract(self, source_port: ISourcePort, query: str = "", **kwargs) -> pl.LazyFrame:
+        return source_port.read_lazy(query)
+
+
+class PrimasAut_ClickhouseDest(ETLDestinationUseCase):
+    """Carga primas de automotores en ClickHouse."""
+
+    destination_type = DestinationType.CLICKHOUSE
+    dest_input_schema = None
+
+    def write(self, frame: pl.LazyFrame, **kwargs) -> None:
+        self.destination_port.write_lazy(frame)
+
+
+class PrimasAutomotoresUseCase(CompositeETLUseCase):
     etl_data_class = PrimasAut_EtlData
+    source_etl_class = PrimasAut_MySQLSource
+    dest_etl_class = PrimasAut_ClickhouseDest
     depends_on = (OrganizadoresUseCase, CoberturasAutomotoresMySqlToClickhouseUseCase)
-    sources = [SourceType.MYSQL, SourceType.CSV, SourceType.PARQUET]
-    implemented_sources = [SourceType.MYSQL]
-    destinations = [DestinationType.CLICKHOUSE]
 
     def execute(self, source_port: ISourcePort, year: int | None = None, **kwargs):
         """Carga primas automotores mes a mes desde enero del año dado.
@@ -74,13 +93,14 @@ class PrimasAutomotoresUseCase(BaseETLUseCase):
 
         while True:
             query = _QUERY_PRIMAS_AUT.format(year=a, month=m)
-            frame = source_port.read_lazy(query)
+            frame = self._source_etl.produce_frame(source_port, query=query)
             month_data: pl.DataFrame = frame.collect()
 
             if month_data.is_empty():
                 break
 
-            self.destination_port.write_lazy(month_data.lazy())
+            self._validate_etl_contract(month_data.lazy())
+            self._dest_etl.execute(month_data.lazy())
             total_rows += month_data.height
             months_processed += 1
 

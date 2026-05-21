@@ -61,16 +61,16 @@ RV_COLUMNS = ["cod_rama", "cod_cobertura", "cobertura", "pormilaje", "informe"]
 def sample_aut_df(n: int = 3) -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "cod_cobertura": [f"C{i:02}" for i in range(n)],
-            "or_cobertura": list(range(n)),
-            "cat_cobertura": ["CAT"] * n,
-            "or_cat_cobertura": list(range(n)),
-            "rt": [1] * n,
-            "rp": [0] * n,
-            "it": [1] * n,
-            "ip": [0] * n,
-            "at": [0] * n,
-            "ap": [1] * n,
+            "cod_cobertura": pl.Series([f"C{i:02}" for i in range(n)], dtype=pl.String),
+            "or_cobertura": pl.Series(list(range(n)), dtype=pl.UInt32),
+            "cat_cobertura": pl.Series(["CAT"] * n, dtype=pl.String),
+            "or_cat_cobertura": pl.Series(list(range(n)), dtype=pl.UInt32),
+            "rt": pl.Series([1] * n, dtype=pl.UInt16),
+            "rp": pl.Series([0] * n, dtype=pl.UInt16),
+            "it": pl.Series([1] * n, dtype=pl.UInt16),
+            "ip": pl.Series([0] * n, dtype=pl.UInt16),
+            "at": pl.Series([0] * n, dtype=pl.UInt16),
+            "ap": pl.Series([1] * n, dtype=pl.UInt16),
         }
     )
 
@@ -78,11 +78,11 @@ def sample_aut_df(n: int = 3) -> pl.DataFrame:
 def sample_rv_df(n: int = 3) -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "cod_rama": list(range(n)),
-            "cod_cobertura": list(range(100, 100 + n)),
-            "cobertura": [f"Cob {i}" for i in range(n)],
-            "pormilaje": [1.5] * n,
-            "informe": ["SI"] * n,
+            "cod_rama": pl.Series(list(range(n)), dtype=pl.UInt32),
+            "cod_cobertura": pl.Series(list(range(100, 100 + n)), dtype=pl.UInt32),
+            "cobertura": pl.Series([f"Cob {i}" for i in range(n)], dtype=pl.String),
+            "pormilaje": pl.Series([1.5] * n, dtype=pl.Float32),
+            "informe": pl.Series(["SI"] * n, dtype=pl.String),
         }
     )
 

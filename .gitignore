@@ -12,3 +12,4 @@ etl-rustico/
 .github/
 .pytest_cache/
 .ruff_cache/
+docs/

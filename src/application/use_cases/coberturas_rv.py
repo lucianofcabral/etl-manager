@@ -1,6 +1,8 @@
 import polars as pl
 
-from src.application.use_cases.base_etl import BaseETLUseCase
+from src.application.use_cases.base_dest_etl import ETLDestinationUseCase
+from src.application.use_cases.base_etl import CompositeETLUseCase
+from src.application.use_cases.base_source_etl import SourceETLUseCase
 from src.domain.models.enums import DestinationType, SourceType
 from src.domain.models.etl_definitions import CoberturasRVarias_EtlData
 from src.domain.ports.endpoints_port import ISourcePort
@@ -16,26 +18,44 @@ _QUERY_COBERTURAS_RV = """
 """
 
 
-class CoberturasRVUseCase(BaseETLUseCase):
-    etl_data_class = CoberturasRVarias_EtlData
-    depends_on = ()
-    sources = [SourceType.MYSQL]
-    implemented_sources = [SourceType.MYSQL]
-    destinations = [DestinationType.CLICKHOUSE]
+class CoberturasRV_MySQLSource(SourceETLUseCase):
+    """Extrae coberturas de ramas varias desde MySQL."""
 
-    def produce_frame(self, source_port: ISourcePort, **kwargs) -> pl.LazyFrame:
+    source_type = SourceType.MYSQL
+    input_schema = None
+
+    def extract(self, source_port: ISourcePort, **kwargs) -> pl.LazyFrame:
         return source_port.read_lazy(_QUERY_COBERTURAS_RV)
 
+
+class CoberturasRV_ClickhouseDest(ETLDestinationUseCase):
+    """Carga coberturas de ramas varias en ClickHouse."""
+
+    destination_type = DestinationType.CLICKHOUSE
+    dest_input_schema = None
+
+    def write(self, frame: pl.LazyFrame, **kwargs) -> dict:
+        row_count = frame.select("cod_cobertura").collect().height
+        self.destination_port.write_lazy(frame)
+        return {"rows": row_count, "table": "coberturas_ramas_varias"}
+
+
+class CoberturasRVUseCase(CompositeETLUseCase):
+    etl_data_class = CoberturasRVarias_EtlData
+    source_etl_class = CoberturasRV_MySQLSource
+    dest_etl_class = CoberturasRV_ClickhouseDest
+    depends_on = ()
+
     def execute(self, source_port: ISourcePort, **kwargs):
-        data = self.produce_frame(source_port, **kwargs)
-        row_count = data.select("cod_cobertura").collect().height
-        if row_count == 0:
+        frame = self._source_etl.produce_frame(source_port, **kwargs)
+        data = frame.collect()
+        if data.is_empty():
             self.logger_port.info(
                 f"[{self.process.etl_data.unique_name}] sin filas en origen, se omite escritura"
             )
             return {"rows": 0, "table": self.process.etl_data.unique_name}
-        self.destination_port.write_lazy(data)
-        return {"rows": row_count, "table": self.process.etl_data.unique_name}
+        self._validate_etl_contract(data.lazy())
+        return self._dest_etl.execute(data.lazy(), **kwargs)
 
     def post_execute(self, result, **kwargs) -> None:
         if result:
